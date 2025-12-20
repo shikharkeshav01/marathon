@@ -21,8 +21,9 @@ ENV HOME=/tmp \
 # Pre-create common writable directories
 RUN mkdir -p /tmp/.cache /tmp/.config /tmp/torch /tmp/easyocr /tmp/ultralytics
 
-
+COPY sa.json .
 COPY requirements.txt .
+
 
 RUN dnf install -y \
       mesa-libGL \

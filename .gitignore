@@ -1,0 +1,13 @@
+# User specified ignores
+Edited/
+.lambda_venv/
+Edited-20251105T124849Z-1-001.zip
+
+# System and Environment
+.DS_Store
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.env
+.venv/
+env/
