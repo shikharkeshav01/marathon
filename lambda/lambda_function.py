@@ -62,6 +62,31 @@ def add_photo(event_id, filename, bib_numbers):
             raise RuntimeError(f"UUID collision detected for EventImageId {event_image_id}")
 
 
+def download_file(file_id):
+    # 1) Get file metadata (name + mime type)
+    metadata = drive.files().get(
+        fileId=file_id,
+        fields="name,mimeType"
+    ).execute()
+
+    mime_type = metadata["mimeType"]
+    filename = metadata["name"]
+
+    # 2) Download image from Google Drive
+    data = drive.files().get_media(fileId=file_id).execute()
+    return filename, data, mime_type
+
+
+def upload_file(s3_key, data):
+    # 4) Upload to S3 with correct extension and content type
+    s3.put_object(
+        Bucket=RAW_BUCKET,
+        Key=s3_key,
+        Body=data,
+        ContentType="image/jpeg"
+    )
+
+
 def generateBibIds(event):
     event_id_raw = event.get("eventId")
     file_id = event.get("fileId")
@@ -79,23 +104,31 @@ def generateBibIds(event):
 
     try:
         
-        # 1) Download image from Google Drive
-        filename, data, mime_type = download_file_from_drive(file_id)
+        # 1) Download image
+        filename, data, mime_type = download_file(file_id)
 
-        # 2) Run processing/model
-        bib_numbers = extract_bib_numbers(data)
+        # 3) Determine file extension
+        ext = os.path.splitext(filename)[1]
+        if not ext:
+            ext = mimetypes.guess_extension(mime_type) or ""
 
-        # 3) Start logic for S3 Upload based on processing
-        if bib_numbers:
-            folder_name = "ProcessedImages"
+        # 5) Run your processing/model here if needed
+        try:
+            bib_numbers = extract_bib_numbers(data)
+            
+            if bib_numbers or len(bib_numbers) > 0:
+                s3_key = f"{event_id}/ProcessedImages/{filename}"
+            else:
+                s3_key = f"{event_id}/UnProcessedImages/{filename}"
+
+            # 4) Upload to S3
+            upload_file(s3_key, data)
+            
             add_photo(event_id, filename, bib_numbers)
-        else:
-            folder_name = "UnProcessedImages"
-
-        # 4) Upload to S3 with correct extension and content type
-        # Using mime_type from Drive if available, else default
-        final_content_type = mime_type if mime_type else "image/jpeg"
-        s3_key = upload_to_s3(event_id, filename, data, folder_name, content_type=final_content_type)
+        
+        except Exception:
+            s3_key = f"{event_id}/UnProcessedImages/{filename}"
+            upload_file(s3_key, data)
 
 
         return {
@@ -111,7 +144,8 @@ def generateBibIds(event):
 
         # Minimal schema: mark FAILED, but do NOT overwrite COMPLETED if already set
         try:
-            pass
+            
+
         #     jobs.update_item(
         #         Key={"EventId": event_id},
         #         UpdateExpression="SET #s = :failed",
@@ -156,38 +190,6 @@ def generateReel(event):
 
 
     
-
-
-def download_file_from_drive(file_id):
-    # 1) Get file metadata (name + mime type)
-    metadata = drive.files().get(
-        fileId=file_id,
-        fields="name,mimeType"
-    ).execute()
-
-    mime_type = metadata["mimeType"]
-    filename = metadata["name"]
-
-    # 2) Download image
-    data = drive.files().get_media(fileId=file_id).execute()
-
-    # 3) Determine file extension
-    ext = os.path.splitext(filename)[1]
-    if not ext:
-        ext = mimetypes.guess_extension(mime_type) or ""
-    
-    # Ensure filename has extension if needed (optional based on preference, but keeping filename as is for now)
-    return filename, data, mime_type
-
-def upload_to_s3(event_id, filename, data, folder_name, content_type="image/jpeg"):
-    s3_key = f"{event_id}/{folder_name}/{filename}"
-    s3.put_object(
-        Bucket=RAW_BUCKET,
-        Key=s3_key,
-        Body=data,
-        ContentType=content_type
-    )
-    return s3_key
 
 def lambda_handler(event, context):
     """
