@@ -180,16 +180,48 @@ def generateReel(event):
     )
     filenames = [item['filename'] for item in response.get('Items', [])]
     overlays = json.loads(reel_config).get("overlays")
+
+
     if len(filenames) < len(overlays):
         raise ValueError("Not enough images found for bib_id")
+
+
+    # Download background video
+    local_video_path = os.path.join("/tmp", os.path.basename(reel_s3_key))
+    try:
+        s3.download_file(RAW_BUCKET, reel_s3_key, local_video_path)
+    except Exception as e:
+        print(f"Error downloading video: {e}")
+        raise e
+
+    # Download images
+    local_image_paths = []
+    for filename in filenames:
+        local_image_path = os.path.join("/tmp", filename)
+        image_s3_key = f"{event_id}/ProcessedImages/{filename}"
+        try:
+            s3.download_file(RAW_BUCKET, image_s3_key, local_image_path)
+            local_image_paths.append(local_image_path)
+        except Exception as e:
+            print(f"Error downloading image {filename}: {e}")
+            # Decide whether to fail hard or skip. Failing hard seems appropriate if we need these images.
+            raise e
+
+    for i in range(len(overlays)):
+        overlays[i]["image_path"] = local_image_paths[i]
     
+    output_path = os.path.join("/tmp", f"{event_id}/ProcessedReels/{bib_id}.mp4")
+    overlay_images_on_video(local_video_path, overlays, output_path)
 
+    s3.upload_file(output_path, RAW_BUCKET, f"{event_id}/ProcessedReels/{bib_id}.mp4")
 
-
-
-
-
-    
+    return {
+        "eventId": str(event_id),
+        "bibId": str(bib_id),
+        "s3Bucket": RAW_BUCKET,
+        "processedReel": f"{event_id}/ProcessedReels/{bib_id}.mp4",
+        "ok": True
+    }    
 
 def lambda_handler(event, context):
     """
