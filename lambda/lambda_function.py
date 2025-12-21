@@ -3,6 +3,7 @@ import os, json, boto3, traceback, mimetypes
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from bib_extraction import detect_and_tabulate_bibs_easyocr
+from reel_generation import overlay_images_on_video
 import uuid
 
 # DynamoDB (schema: EventId (N) PK, DriveUrl (S), Status (S))
@@ -144,6 +145,7 @@ def generateBibIds(event):
 
         # Minimal schema: mark FAILED, but do NOT overwrite COMPLETED if already set
         try:
+            pass
             
 
         #     jobs.update_item(
@@ -165,6 +167,8 @@ def generateBibIds(event):
 
 
 def generateReel(event):
+
+    print("Generating reel for bib_id", event.get("item"))
     event_id = event.get("eventId")
     reel_s3_key = event.get("reelS3Key")
     reel_config = event.get("reelConfiguration")
@@ -187,6 +191,7 @@ def generateReel(event):
 
 
     # Download background video
+    print("Downloading background video")
     local_video_path = os.path.join("/tmp", os.path.basename(reel_s3_key))
     try:
         s3.download_file(RAW_BUCKET, reel_s3_key, local_video_path)
@@ -196,6 +201,7 @@ def generateReel(event):
 
     # Download images
     local_image_paths = []
+    print("Downloading images")
     for filename in filenames:
         local_image_path = os.path.join("/tmp", filename)
         image_s3_key = f"{event_id}/ProcessedImages/{filename}"
@@ -211,10 +217,12 @@ def generateReel(event):
         overlays[i]["image_path"] = local_image_paths[i]
     
     output_path = os.path.join("/tmp", f"{event_id}/ProcessedReels/{bib_id}.mp4")
+    print("Overlaying images on video")
     overlay_images_on_video(local_video_path, overlays, output_path)
-
+    print("Uploading processed reel")
     s3.upload_file(output_path, RAW_BUCKET, f"{event_id}/ProcessedReels/{bib_id}.mp4")
 
+    #TODO DynamoDB
     return {
         "eventId": str(event_id),
         "bibId": str(bib_id),
@@ -233,11 +241,13 @@ def lambda_handler(event, context):
     }
     """
     print(json.dumps(event))
-    requestType=event.get("eventId")
+    requestType=event.get("requestType")
 
-    if requestType is "PROCESS_IMAGES":
+    if requestType == "PROCESS_IMAGES":
         return generateBibIds(event)
-    elif requestType is "GENERATE_REEL":
+    elif requestType == "GENERATE_REEL":
         return generateReel(event)
+    else:
+        raise ValueError("Invalid request type")
 
     

@@ -32,7 +32,10 @@ RUN dnf install -y \
       libXrender \
       libX11 \
     && dnf clean all
-
+    
+RUN dnf install ffmpeg
+# RUN apt-get install ffmpeg
+# RUN apt-get install libsm6
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Preload models during build
@@ -43,6 +46,7 @@ RUN python preload_models.py
 COPY lambda_function.py ${LAMBDA_TASK_ROOT}/
 COPY bib_extraction.py ${LAMBDA_TASK_ROOT}/
 COPY event.json ${LAMBDA_TASK_ROOT}/
+COPY reel_generation.py ${LAMBDA_TASK_ROOT}/
 # Note: yolov8n.pt will be downloaded automatically if not present, but it's preloaded above
 # 5) Set the handler (module.function)
 CMD ["lambda_function.lambda_handler"]

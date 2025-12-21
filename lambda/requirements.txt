@@ -3,4 +3,8 @@ numpy
 easyocr
 ultralytics
 google-api-python-client
+moviepy
+Pillow
+imageio
+imageio-ffmpeg
 

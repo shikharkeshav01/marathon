@@ -3,6 +3,19 @@ from PIL import Image
 import numpy as np
 import os
 from pathlib import Path
+import subprocess
+
+
+def test():
+    try:
+        out = subprocess.check_output(
+            ["ffmpeg", "-version"],
+            stderr=subprocess.STDOUT
+        ).decode()
+        print("FFMPEG OK:", out.splitlines()[0])
+    except Exception as e:
+        print("FFMPEG FAILED:", e)
+
 
 def transform_image(image_path, scale=1.0, rotation=0, opacity=1.0):
     """
@@ -61,6 +74,8 @@ def save_output():
     pass
 # overlay: {[\"start_time\": 1, \"duration\": 1], [\"start_time\": 3, \"duration\": 1]}
 def overlay_images_on_video(video_path, overlays, output_path):
+
+    test()
     """
     Overlay multiple images on a video at specific timestamps with transformations.
     
@@ -195,10 +210,10 @@ def overlay_images_on_video(video_path, overlays, output_path):
         audio_codec='aac',
         fps=video.fps,
         preset='medium',
-        threads=4
+        # threads=4,
     )
     
-    Clean up
+    # Clean up
     video.close()
     final_video.close()
 
@@ -207,44 +222,43 @@ def overlay_images_on_video(video_path, overlays, output_path):
     print(f"\n✓ Video processing complete! Output saved to: {output_path}")
 
 
-import tempfile
-import requests
-import json
-import os
+# import tempfile
+# import requests
+# import json
+# import os
 
-def generate_reel(template_url, overlay_config):
-    """
-    Downloads the video from template_url, saves to temp storage,
-    parses overlay_config (stringified JSON), and passes these to
-    overlay_images_on_video.
-    """
-    # Download video to a temporary file
-    print(f"Downloading video from template URL: {template_url}")
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
-        response = requests.get(template_url, stream=True)
-        if response.status_code != 200:
-            raise Exception(f"Failed to download video file. Status: {response.status_code}")
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                tmp_file.write(chunk)
-        video_path = tmp_file.name
-    print(f"Video downloaded to: {video_path}")
+# def generate_reel(template_url, overlay_config):
+#     """
+#     Downloads the video from template_url, saves to temp storage,
+#     parses overlay_config (stringified JSON), and passes these to
+#     overlay_images_on_video.
+#     """
+#     # Download video to a temporary file
+#     print(f"Downloading video from template URL: {template_url}")
+#     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+#         response = requests.get(template_url, stream=True)
+#         if response.status_code != 200:
+#             raise Exception(f"Failed to download video file. Status: {response.status_code}")
+#         for chunk in response.iter_content(chunk_size=8192):
+#             if chunk:
+#                 tmp_file.write(chunk)
+#         video_path = tmp_file.name
+#     print(f"Video downloaded to: {video_path}")
 
-    # overlays :{"overlays":[\"start_time\": 1, \"duration\": 1], [\"start_time\": 3, \"duration\": 1]}
-    overlays = json.loads(overlay_config).get("overlays")
+#     # overlays :{"overlays":[\"start_time\": 1, \"duration\": 1], [\"start_time\": 3, \"duration\": 1]}
+#     overlays = json.loads(overlay_config).get("overlays")
 
-    # Output path: temp file
-    output_path = video_path.replace('.mp4', '_output.mp4')
-    # Pass to overlay_images_on_video
-    overlay_images_on_video(video_path, overlays, output_path)
+#     # Output path: temp file
+#     output_path = video_path.replace('.mp4', '_output.mp4')
+#     # Pass to overlay_images_on_video
+#     overlay_images_on_video(video_path, overlays, output_path)
 
-    print(f"Generated reel saved to {output_path}")
+#     print(f"Generated reel saved to {output_path}")
 
-    # Optionally cleanup original file (comment this out if you need source video later)
-    try:
-        os.remove(video_path)
-    except Exception:
-        pass
+#     # Optionally cleanup original file (comment this out if you need source video later)
+#     try:
+#         os.remove(video_path)
+#     except Exception:
+#         pass
 
-    return output_path
-    
+#     return output_path
