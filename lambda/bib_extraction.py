@@ -100,7 +100,7 @@ def detect_and_tabulate_bibs_easyocr(
                 print(f"    [BIB] {text_clean} (OCR conf={conf:.2f})")
 
     if not bibs:
-        bibs = {"unknown"}
+        bibs = []
     print(f"[SUMMARY] {image_name}: {sorted(list(bibs))}")
 
     return sorted(bibs)

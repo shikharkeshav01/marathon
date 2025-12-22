@@ -263,11 +263,18 @@ def lambda_handler(event, context):
     print(json.dumps(event))
     requestType=event.get("requestType")
 
-    if requestType == "PROCESS_IMAGES":
-        return generateBibIds(event)
-    elif requestType == "GENERATE_REEL":
-        return generateReel(event)
-    else:
-        raise ValueError("Invalid request type")
+    try:
+        if requestType == "PROCESS_IMAGES":
+            return generateBibIds(event)
+        elif requestType == "GENERATE_REEL":
+            return generateReel(event)
+        else:
+            raise ValueError("Invalid request type")
+    except Exception as e:
+        print(f"Error: {e}")
+        return {
+            "ok": False,
+            "error": str(e)
+        }
 
     
