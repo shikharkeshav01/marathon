@@ -203,23 +203,23 @@ def overlay_images_on_video(video_path, overlays, output_path):
     
     # Write the output video
     print(f"\nWriting output video to: {output_path}")
-    save_output()
+    # save_output()
     final_video.write_videofile(
         output_path,
         codec='libx264',
         audio_codec='aac',
         fps=video.fps,
         preset='medium',
-        # threads=4,
+        threads=4,
     )
     
     # Clean up
     video.close()
     final_video.close()
-
-    return final_video
-    
     print(f"\n✓ Video processing complete! Output saved to: {output_path}")
+
+    # return final_video
+    
 
 
 # import tempfile

@@ -32,8 +32,8 @@ RUN dnf install -y \
       libXrender \
       libX11 \
     && dnf clean all
-    
-RUN dnf install ffmpeg
+
+# RUN dnf install ffmpeg
 # RUN apt-get install ffmpeg
 # RUN apt-get install libsm6
 RUN pip install --no-cache-dir -r requirements.txt

@@ -90,7 +90,8 @@ def upload_file(s3_key, data):
 
 def generateBibIds(event):
     event_id_raw = event.get("eventId")
-    file_id = event.get("fileId")
+    item = event.get("item")
+    file_id = item.get("fileId")
 
     if event_id_raw is None:
         raise ValueError("Missing eventId")
@@ -187,7 +188,7 @@ def generateReel(event):
 
 
     if len(filenames) < len(overlays):
-        raise ValueError("Not enough images found for bib_id")
+        raise ValueError(f"Not enough images found for bib_id{bib_id}")
 
 
     # Download background video
@@ -216,13 +217,32 @@ def generateReel(event):
     for i in range(len(overlays)):
         overlays[i]["image_path"] = local_image_paths[i]
     
-    output_path = os.path.join("/tmp", f"{event_id}/ProcessedReels/{bib_id}.mp4")
+    # output_path = os.path.join("/tmp", f"{event_id}/ProcessedReels/{bib_id}.mp4")
+    output_path = os.path.join("/tmp", f"{bib_id}.mp4")
+
     print("Overlaying images on video")
     overlay_images_on_video(local_video_path, overlays, output_path)
     print("Uploading processed reel")
     s3.upload_file(output_path, RAW_BUCKET, f"{event_id}/ProcessedReels/{bib_id}.mp4")
 
-    #TODO DynamoDB
+    # Write to DynamoDB EventReel table
+    try:
+        event_reel_table = ddb.Table('EventReel')
+        event_reel_id = str(uuid.uuid4())
+        reel_path = f"{event_id}/ProcessedReels/{bib_id}.mp4"
+        
+        event_reel_table.put_item(
+            Item={
+                'EventReelId': event_reel_id,
+                'BibId': str(bib_id),
+                'EventId': int(event_id),
+                'ReelPath': reel_path
+            }
+        )
+    except Exception as e:
+        print(f"Error saving to DynamoDB EventReel: {e}")
+        raise e
+
     return {
         "eventId": str(event_id),
         "bibId": str(bib_id),
