@@ -188,8 +188,14 @@ def generateReel(event):
 
 
     if len(filenames) < len(overlays):
-        raise ValueError(f"Not enough images found for bib_id{bib_id}")
-
+        return {
+            "eventId": str(event_id),
+            "bibId": str(bib_id),
+            "s3Bucket": RAW_BUCKET,
+            "processedReel": f"{event_id}/ProcessedReels/{bib_id}.mp4",
+            "ok": False,
+            "error": f"Not enough images found for bib_id{bib_id}"
+        }
 
     # Download background video
     print("Downloading background video")
